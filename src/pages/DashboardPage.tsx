@@ -1,232 +1,318 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../hooks/useApp';
+import { useAuth } from '../hooks/useAuth';
 import { Navbar } from '../components/layout/Navbar';
 import { Avatar } from '../components/common/Avatar';
 import { StatusBadge } from '../components/common/StatusBadge';
 import {
   Layers,
+  AlertTriangle,
   Clock,
-  Eye,
+  Calendar,
   CheckCircle2,
   FolderKanban,
-  TrendingUp,
-  Activity,
-  PlusCircle,
   ArrowRight,
+  Plus,
+  Flame,
+  Check,
+  UserCheck,
+  Activity,
 } from 'lucide-react';
-import type { Project, User } from '../types';
 
 export const DashboardPage: React.FC = () => {
-  const {
-    issues,
-    projects,
-    users,
-    openCreateModal,
-    openIssueDetail,
-  } = useApp();
-
+  const { issues, projects, users, openCreateModal, openIssueDetail, setFilter, setViewMode } = useApp();
+  const { user, workspace } = useAuth();
   const navigate = useNavigate();
 
-  // Statistics
-  const totalCount = issues.length;
-  const inProgressCount = issues.filter((i) => i.status === 'in_progress').length;
-  const inReviewCount = issues.filter((i) => i.status === 'in_review').length;
-  const doneCount = issues.filter((i) => i.status === 'done').length;
-  const todoCount = issues.filter((i) => i.status === 'todo').length;
-  const completionRate = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  // Current User Open Issues
+  const myOpenIssues = issues.filter(
+    (i) => i.assigneeId === user?.id && i.status !== 'done' && i.status !== 'canceled'
+  );
 
-  // Recent 6 issues
-  const recentIssues = [...issues]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 6);
+  // Issues Requiring Attention: Urgent priority OR in review OR overdue
+  const todayStr = new Date().toISOString().split('T')[0];
+  const attentionIssues = issues.filter((i) => {
+    if (i.status === 'done' || i.status === 'canceled') return false;
+    const isUrgent = i.priority === 'urgent';
+    const isInReview = i.status === 'in_review';
+    const isOverdue = i.dueDate && i.dueDate < todayStr;
+    return isUrgent || isInReview || isOverdue;
+  });
+
+  // Upcoming deadlines (issues with dueDate >= today, sorted ascending)
+  const upcomingDeadlineIssues = issues
+    .filter((i) => i.dueDate && i.dueDate >= todayStr && i.status !== 'done' && i.status !== 'canceled')
+    .sort((a, b) => (a.dueDate! > b.dueDate! ? 1 : -1))
+    .slice(0, 5);
+
+  // Metrics derived from real data
+  const totalOpen = issues.filter((i) => i.status !== 'done' && i.status !== 'canceled').length;
+  const inProgressCount = issues.filter((i) => i.status === 'in_progress').length;
+  const completedCount = issues.filter((i) => i.status === 'done').length;
+  const urgentCount = issues.filter((i) => i.priority === 'urgent' && i.status !== 'done').length;
+
+  const handleMetricClick = (filterType: 'status' | 'priority', value: any) => {
+    setFilter(filterType, value);
+    setViewMode('list');
+    navigate('/issues');
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const formattedDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date());
 
   return (
     <div className="app-main">
       <Navbar />
 
-      <div className="workspace-scroll-area" style={{ padding: '24px 28px', maxWidth: '1200px' }}>
-        {/* Welcome Banner */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '24px',
-            backgroundColor: 'var(--bg-card)',
-            border: '1px solid var(--border-card)',
-            borderRadius: 'var(--radius-md)',
-            padding: '20px 24px',
-            boxShadow: 'var(--shadow-card)',
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              LinearFlow Workspace Overview
+      <div className="workspace-scroll-area dashboard-container">
+        {/* Header Hero */}
+        <div className="dashboard-hero-header">
+          <div className="hero-text-block">
+            <div className="dashboard-date-badge">
+              <Calendar size={13} />
+              <span>{formattedDate}</span>
+              <span className="bullet-sep">•</span>
+              <span>{workspace?.name || 'Workspace'}</span>
+            </div>
+            <h1 className="dashboard-page-title">
+              {getGreeting()}, {user?.name?.split(' ')[0] || 'Engineer'}
             </h1>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              High-throughput issue velocity, project milestones, and real-time team throughput.
+            <p className="dashboard-page-subtitle">
+              Here is what's happening across your active issues, team priorities, and release cycles today.
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn-secondary" onClick={() => navigate('/issues')}>
-              <Layers size={14} />
-              <span>Open Board</span>
+          <div className="hero-actions-row">
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                setViewMode('board');
+                navigate('/issues');
+              }}
+            >
+              <Layers size={15} />
+              <span>Issue Board</span>
             </button>
-            <button className="btn-primary" onClick={openCreateModal}>
-              <PlusCircle size={14} />
-              <span>Create Issue</span>
+            <button className="btn btn-primary" onClick={openCreateModal}>
+              <Plus size={16} />
+              <span>New Issue</span>
             </button>
           </div>
         </div>
 
-        {/* Issue Metric Cards */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '14px',
-            marginBottom: '28px',
-          }}
-        >
-          <div className="dashboard-metric-card">
+        {/* Real-Data Interactive Metric Cards */}
+        <div className="dashboard-metrics-strip">
+          <div
+            className="metric-card metric-interactive"
+            onClick={() => handleMetricClick('status', 'all')}
+            title="View all open issues"
+          >
             <div className="metric-header">
-              <span className="metric-title">Total Issues</span>
-              <Layers size={15} color="var(--text-tertiary)" />
+              <span className="metric-title">Total Open</span>
+              <Layers size={16} className="text-muted" />
             </div>
-            <div className="metric-value">{totalCount}</div>
-            <div className="metric-sub">Active in workspace</div>
+            <div className="metric-value">{totalOpen}</div>
+            <div className="metric-sub">Across all projects</div>
           </div>
 
-          <div className="dashboard-metric-card">
+          <div
+            className="metric-card metric-interactive"
+            onClick={() => handleMetricClick('status', 'in_progress')}
+            title="Filter by In Progress"
+          >
             <div className="metric-header">
               <span className="metric-title">In Progress</span>
-              <Clock size={15} color="#f59e0b" />
+              <Activity size={16} className="text-primary" />
             </div>
-            <div className="metric-value">{inProgressCount}</div>
-            <div className="metric-sub" style={{ color: '#f59e0b' }}>Actively developing</div>
+            <div className="metric-value text-primary">{inProgressCount}</div>
+            <div className="metric-sub">Currently underway</div>
           </div>
 
-          <div className="dashboard-metric-card">
+          <div
+            className="metric-card metric-interactive"
+            onClick={() => handleMetricClick('priority', 'urgent')}
+            title="Filter by Urgent issues"
+          >
             <div className="metric-header">
-              <span className="metric-title">In Review</span>
-              <Eye size={15} color="#a855f7" />
+              <span className="metric-title">Urgent</span>
+              <Flame size={16} className="text-destructive" />
             </div>
-            <div className="metric-value">{inReviewCount}</div>
-            <div className="metric-sub" style={{ color: '#a855f7' }}>Awaiting PR approval</div>
+            <div className="metric-value text-destructive">{urgentCount}</div>
+            <div className="metric-sub">Requiring swift resolution</div>
           </div>
 
-          <div className="dashboard-metric-card">
+          <div
+            className="metric-card metric-interactive"
+            onClick={() => handleMetricClick('status', 'done')}
+            title="Filter by Done"
+          >
             <div className="metric-header">
               <span className="metric-title">Completed</span>
-              <CheckCircle2 size={15} color="#10b981" />
+              <CheckCircle2 size={16} className="text-emerald" />
             </div>
-            <div className="metric-value">{doneCount}</div>
-            <div className="metric-sub" style={{ color: '#10b981' }}>{completionRate}% completion rate</div>
-          </div>
-
-          <div className="dashboard-metric-card">
-            <div className="metric-header">
-              <span className="metric-title">Todo Queue</span>
-              <TrendingUp size={15} color="#3b82f6" />
-            </div>
-            <div className="metric-value">{todoCount}</div>
-            <div className="metric-sub">Ready to start</div>
+            <div className="metric-value text-emerald">{completedCount}</div>
+            <div className="metric-sub">Resolved and shipped</div>
           </div>
         </div>
 
-        {/* Two-Column Layout: Project Summaries & Recent Activity */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
-          {/* Projects Summary */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
-                <FolderKanban size={15} color="var(--accent-primary)" />
-                <span>Active Projects</span>
+        {/* Priority 1 & 2: My Open Issues & Issues Requiring Attention */}
+        <div className="dashboard-grid-dual">
+          {/* Section 1: My Open Issues */}
+          <div className="dashboard-section-card">
+            <div className="section-card-header">
+              <div className="flex-center gap-2">
+                <UserCheck size={18} className="text-primary" />
+                <h2 className="section-title">My Open Issues</h2>
+                <span className="counter-pill">{myOpenIssues.length}</span>
               </div>
               <button
-                className="btn-secondary"
-                onClick={() => navigate('/projects')}
-                style={{ fontSize: '11px', padding: '3px 8px' }}
+                className="btn-link"
+                onClick={() => navigate('/my-issues')}
               >
-                <span>All Projects</span>
-                <ArrowRight size={11} />
+                View all <ArrowRight size={14} />
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {projects.map((proj: Project) => {
+            {myOpenIssues.length === 0 ? (
+              <div className="empty-state-compact">
+                <Check size={20} className="text-emerald" />
+                <p>You have no pending issues assigned to you. Great job!</p>
+              </div>
+            ) : (
+              <div className="dashboard-issue-list">
+                {myOpenIssues.slice(0, 5).map((issue) => {
+                  const project = projects.find((p) => p.id === issue.projectId);
+                  return (
+                    <div
+                      key={issue.id}
+                      className="dashboard-issue-row"
+                      onClick={() => openIssueDetail(issue)}
+                    >
+                      <div className="issue-row-main">
+                        <span className="issue-id-tag">{issue.identifier}</span>
+                        <span className="issue-title-text">{issue.title}</span>
+                      </div>
+                      <div className="issue-row-meta">
+                        {project && <span className="project-sub-tag">{project.name}</span>}
+                        <StatusBadge status={issue.status} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Issues Requiring Attention */}
+          <div className="dashboard-section-card">
+            <div className="section-card-header">
+              <div className="flex-center gap-2">
+                <AlertTriangle size={18} className="text-warning" />
+                <h2 className="section-title">Needs Attention</h2>
+                <span className="counter-pill counter-pill-warn">{attentionIssues.length}</span>
+              </div>
+              <span className="section-caption">Urgent, In Review, or Overdue</span>
+            </div>
+
+            {attentionIssues.length === 0 ? (
+              <div className="empty-state-compact">
+                <CheckCircle2 size={20} className="text-emerald" />
+                <p>No critical blockers or overdue issues right now.</p>
+              </div>
+            ) : (
+              <div className="dashboard-issue-list">
+                {attentionIssues.slice(0, 5).map((issue) => {
+                  const assignee = users.find((u) => u.id === issue.assigneeId);
+                  const isUrgent = issue.priority === 'urgent';
+                  const isOverdue = issue.dueDate && issue.dueDate < todayStr;
+                  return (
+                    <div
+                      key={issue.id}
+                      className="dashboard-issue-row"
+                      onClick={() => openIssueDetail(issue)}
+                    >
+                      <div className="issue-row-main">
+                        <span className="issue-id-tag">{issue.identifier}</span>
+                        <span className="issue-title-text">{issue.title}</span>
+                      </div>
+                      <div className="issue-row-meta">
+                        {isUrgent && <span className="badge badge-urgent">Urgent</span>}
+                        {isOverdue && <span className="badge badge-overdue">Overdue</span>}
+                        {issue.status === 'in_review' && <span className="badge badge-review">In Review</span>}
+                        {assignee && <Avatar user={assignee} size="sm" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section 3 & 4: Active Projects & Upcoming Deadlines */}
+        <div className="dashboard-grid-dual">
+          {/* Active Projects */}
+          <div className="dashboard-section-card">
+            <div className="section-card-header">
+              <div className="flex-center gap-2">
+                <FolderKanban size={18} className="text-primary" />
+                <h2 className="section-title">Active Projects</h2>
+                <span className="counter-pill">{projects.length}</span>
+              </div>
+              <button className="btn-link" onClick={() => navigate('/projects')}>
+                All projects <ArrowRight size={14} />
+              </button>
+            </div>
+
+            <div className="dashboard-project-list">
+              {projects.map((proj) => {
                 const projIssues = issues.filter((i) => i.projectId === proj.id);
-                const pDone = projIssues.filter((i) => i.status === 'done').length;
-                const pPercent = projIssues.length > 0 ? Math.round((pDone / projIssues.length) * 100) : 0;
-                const lead = users.find((u: User) => u.id === proj.leadId);
+                const projDone = projIssues.filter((i) => i.status === 'done').length;
+                const progressPct = projIssues.length > 0 ? Math.round((projDone / projIssues.length) * 100) : 0;
+                const leadUser = users.find((u) => u.id === proj.leadId);
 
                 return (
                   <div
                     key={proj.id}
+                    className="dashboard-project-row"
                     onClick={() => navigate(`/projects/${proj.id}`)}
-                    style={{
-                      backgroundColor: 'var(--bg-card)',
-                      border: '1px solid var(--border-card)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '14px 16px',
-                      cursor: 'pointer',
-                      boxShadow: 'var(--shadow-card)',
-                    }}
-                    className="linear-issue-card"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span
-                          style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: proj.color,
-                          }}
-                        />
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {proj.name}
-                        </span>
+                    <div className="project-row-top">
+                      <div className="flex-center gap-2">
+                        <span className="project-color-dot" style={{ backgroundColor: proj.color || '#6366f1' }} />
+                        <span className="project-row-name">{proj.name}</span>
                       </div>
-                      <span className="card-identifier">{proj.key}</span>
+                      <span className="project-pct-text">{progressPct}%</span>
                     </div>
 
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', lineHeight: 1.4 }}>
-                      {proj.description}
-                    </p>
+                    <p className="project-row-desc">{proj.description}</p>
 
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>
-                        <span>Progress</span>
-                        <span>{pPercent}% ({pDone}/{projIssues.length} issues)</span>
-                      </div>
+                    <div className="project-progress-bar-bg">
                       <div
-                        style={{
-                          width: '100%',
-                          height: '5px',
-                          backgroundColor: '#1b1d24',
-                          borderRadius: 'var(--radius-full)',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${pPercent}%`,
-                            height: '100%',
-                            backgroundColor: proj.color,
-                            borderRadius: 'var(--radius-full)',
-                          }}
-                        />
-                      </div>
+                        className="project-progress-bar-fill"
+                        style={{ width: `${progressPct}%`, backgroundColor: proj.color || '#6366f1' }}
+                      />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Lead:</span>
-                        <Avatar user={lead} size={18} showName />
-                      </div>
+                    <div className="project-row-footer">
+                      <span className="text-secondary text-xs">{projIssues.length} issues total</span>
+                      {leadUser && (
+                        <div className="flex-center gap-1 text-xs text-muted">
+                          <Avatar user={leadUser} size="xs" />
+                          <span>{leadUser.name}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -234,62 +320,56 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent Activity / Issues Stream */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
-                <Activity size={15} color="var(--accent-primary)" />
-                <span>Recent Updates</span>
+          {/* Upcoming Deadlines */}
+          <div className="dashboard-section-card">
+            <div className="section-card-header">
+              <div className="flex-center gap-2">
+                <Clock size={18} className="text-primary" />
+                <h2 className="section-title">Upcoming Deadlines</h2>
               </div>
-              <button
-                className="btn-secondary"
-                onClick={() => navigate('/issues')}
-                style={{ fontSize: '11px', padding: '3px 8px' }}
-              >
-                <span>View All</span>
-                <ArrowRight size={11} />
-              </button>
+              <span className="section-caption">Scheduled milestones</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {recentIssues.map((iss) => (
-                <div
-                  key={iss.id}
-                  onClick={() => openIssueDetail(iss)}
-                  style={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-card)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    boxShadow: 'var(--shadow-card)',
-                  }}
-                  className="linear-issue-card"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                    <span className="card-identifier">{iss.identifier}</span>
-                    <StatusBadge status={iss.status} />
-                    <span
-                      style={{
-                        fontSize: '12.5px',
-                        color: 'var(--text-primary)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
+            {upcomingDeadlineIssues.length === 0 ? (
+              <div className="empty-state-compact">
+                <Calendar size={20} className="text-muted" />
+                <p>No upcoming issue due dates scheduled this week.</p>
+              </div>
+            ) : (
+              <div className="dashboard-issue-list">
+                {upcomingDeadlineIssues.map((issue) => {
+                  const assignee = users.find((u) => u.id === issue.assigneeId);
+                  return (
+                    <div
+                      key={issue.id}
+                      className="dashboard-issue-row"
+                      onClick={() => openIssueDetail(issue)}
                     >
-                      {iss.title}
-                    </span>
-                  </div>
+                      <div className="issue-row-main">
+                        <span className="issue-id-tag">{issue.identifier}</span>
+                        <span className="issue-title-text">{issue.title}</span>
+                      </div>
+                      <div className="issue-row-meta">
+                        <span className="deadline-tag">
+                          <Calendar size={12} />
+                          {issue.dueDate}
+                        </span>
+                        {assignee && <Avatar user={assignee} size="sm" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                    <Avatar user={iss.assignee} size={20} />
-                  </div>
-                </div>
-              ))}
+            {/* Quick Tips or Workspace Info Box */}
+            <div className="dashboard-info-box mt-4">
+              <div className="info-box-header">
+                <span className="info-box-title">Keyboard Navigation Pro-tip</span>
+              </div>
+              <p className="info-box-text">
+                Press <kbd>Ctrl</kbd> + <kbd>K</kbd> anywhere in LinearFlow to open the Command Palette, switch views, or search across issues.
+              </p>
             </div>
           </div>
         </div>
@@ -297,3 +377,4 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
+export default DashboardPage;

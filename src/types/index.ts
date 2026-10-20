@@ -9,7 +9,10 @@ export interface User {
   avatar?: string;
   initials?: string;
   color?: string;
-  role: string;
+  role?: string;
+  jobTitle?: string;
+  timezone?: string;
+  createdAt?: string;
 }
 
 export interface Project {

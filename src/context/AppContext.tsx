@@ -55,6 +55,7 @@ interface AppContextType {
     priority: IssuePriority;
     projectId: string;
     assigneeId?: string;
+    dueDate?: string;
     labels?: string[];
   }) => Issue;
   updateIssue: (id: string, updates: Partial<Issue>) => Issue;
@@ -75,7 +76,7 @@ const defaultFilters: FilterState = {
   sortOrder: 'desc',
 };
 
-const AppContext = createContext<AppContextType | undefined>(undefined);
+export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [issues, setIssues] = useState<Issue[]>(() => StorageService.getIssues());

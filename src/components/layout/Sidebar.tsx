@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../hooks/useApp';
+import { useAuth } from '../../hooks/useAuth';
 import {
   Inbox,
   UserCheck,
@@ -15,6 +16,12 @@ import {
   Search,
   SquarePen,
   ChevronDown,
+  Moon,
+  Sun,
+  LogOut,
+  Command,
+  Settings as SettingsIcon,
+  User as UserIcon,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -27,6 +34,16 @@ export const Sidebar: React.FC = () => {
     setCurrentUser,
     addToast,
   } = useApp();
+
+  const {
+    user,
+    workspace,
+    workspaces,
+    switchWorkspace,
+    preferences,
+    updatePreferences,
+    signOut,
+  } = useAuth();
 
   const navigate = useNavigate();
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
@@ -43,25 +60,35 @@ export const Sidebar: React.FC = () => {
             aria-label="Workspace menu"
             aria-expanded={workspaceMenuOpen}
           >
-            <div className="sidebar-ws-badge">TBW</div>
-            <span className="sidebar-ws-title">Test Blog Wo...</span>
+            <div className="sidebar-ws-badge">
+              {workspace?.name ? workspace.name.substring(0, 3).toUpperCase() : 'LNF'}
+            </div>
+            <span className="sidebar-ws-title">{workspace?.name || 'LinearFlow'}</span>
             <ChevronDown size={12} color="var(--text-tertiary)" />
           </button>
 
           {workspaceMenuOpen && (
             <div className="sidebar-dropdown-menu" onClick={(e) => e.stopPropagation()}>
               <div className="sidebar-dropdown-label">Workspaces</div>
-              <div
-                className="sidebar-dropdown-item active"
-                onClick={() => setWorkspaceMenuOpen(false)}
-              >
-                <div className="sidebar-ws-badge" style={{ width: '18px', height: '18px', fontSize: '9px' }}>
-                  TBW
+              {workspaces.map((ws) => (
+                <div
+                  key={ws.id}
+                  className={`sidebar-dropdown-item ${ws.id === workspace?.id ? 'active' : ''}`}
+                  onClick={() => {
+                    switchWorkspace(ws.id);
+                    setWorkspaceMenuOpen(false);
+                    addToast({ title: `Switched to ${ws.name}`, type: 'info', duration: 2000 });
+                  }}
+                >
+                  <div className="sidebar-ws-badge" style={{ width: '18px', height: '18px', fontSize: '9px' }}>
+                    {ws.name.substring(0, 3).toUpperCase()}
+                  </div>
+                  <span>{ws.name}</span>
                 </div>
-                <span>Test Blog Workspace</span>
-              </div>
+              ))}
               <div
                 className="sidebar-dropdown-item"
+                style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '4px', paddingTop: '6px' }}
                 onClick={() => {
                   setWorkspaceMenuOpen(false);
                   navigate('/settings');
@@ -288,20 +315,72 @@ export const Sidebar: React.FC = () => {
             onClick={() => setUserMenuOpen((prev) => !prev)}
             role="button"
             tabIndex={0}
-            title={`Active: ${currentUser.name}`}
+            title={`Active: ${user?.name || currentUser.name}`}
           >
             <div
               className="mini-avatar"
-              style={{ backgroundColor: currentUser.color || '#10b981' }}
+              style={{ backgroundColor: user?.color || currentUser.color || '#10b981' }}
             >
-              {currentUser.initials || 'AM'}
+              {user?.initials || currentUser.initials || 'AM'}
             </div>
-            <span className="mini-user-name">{currentUser.name}</span>
+            <span className="mini-user-name">{user?.name || currentUser.name}</span>
           </div>
 
           {userMenuOpen && (
             <div className="sidebar-dropdown-menu user-dropdown" onClick={(e) => e.stopPropagation()}>
-              <div className="sidebar-dropdown-label">Switch Persona</div>
+              <div className="user-dropdown-header">
+                <div className="user-dropdown-name">{user?.name || currentUser.name}</div>
+                <div className="user-dropdown-email">{user?.email || 'alex@linearflow.app'}</div>
+              </div>
+
+              <div
+                className="sidebar-dropdown-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  navigate('/settings');
+                }}
+              >
+                <UserIcon size={14} />
+                <span>Profile</span>
+              </div>
+
+              <div
+                className="sidebar-dropdown-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  navigate('/settings');
+                }}
+              >
+                <SettingsIcon size={14} />
+                <span>Account Settings</span>
+              </div>
+
+              <div
+                className="sidebar-dropdown-item"
+                onClick={() => {
+                  const nextTheme = preferences.theme === 'dark' ? 'light' : 'dark';
+                  updatePreferences({ theme: nextTheme });
+                  addToast({ title: `Theme switched to ${nextTheme}`, type: 'info', duration: 1500 });
+                }}
+              >
+                {preferences.theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                <span>Toggle {preferences.theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+              </div>
+
+              <div
+                className="sidebar-dropdown-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  openCommandPalette();
+                }}
+              >
+                <Command size={14} />
+                <span>Keyboard Shortcuts</span>
+              </div>
+
+              <div className="sidebar-dropdown-label" style={{ marginTop: '6px', borderTop: '1px solid var(--border-subtle)', paddingTop: '6px' }}>
+                Switch Persona
+              </div>
               {users.map((u) => (
                 <div
                   key={u.id}
@@ -309,7 +388,7 @@ export const Sidebar: React.FC = () => {
                   onClick={() => {
                     setCurrentUser(u);
                     setUserMenuOpen(false);
-                    addToast({ title: `Switched persona to ${u.name}`, type: 'info', duration: 2000 });
+                    addToast({ title: `Switched persona to ${u.name}`, type: 'info', duration: 1500 });
                   }}
                 >
                   <div
@@ -321,6 +400,20 @@ export const Sidebar: React.FC = () => {
                   <span>{u.name}</span>
                 </div>
               ))}
+
+              <div
+                className="sidebar-dropdown-item text-destructive"
+                style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '4px', paddingTop: '6px' }}
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  signOut();
+                  addToast({ title: 'Signed out of LinearFlow', type: 'info', duration: 2000 });
+                  navigate('/signin');
+                }}
+              >
+                <LogOut size={14} />
+                <span>Sign out</span>
+              </div>
             </div>
           )}
         </div>

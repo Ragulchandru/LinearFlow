@@ -2,17 +2,27 @@ import type { User } from '../../types';
 
 interface AvatarProps {
   user?: User;
-  size?: number;
+  size?: number | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   showName?: boolean;
 }
 
+const sizeMap: Record<string, number> = {
+  xs: 16,
+  sm: 20,
+  md: 24,
+  lg: 36,
+  xl: 48,
+};
+
 export const Avatar: React.FC<AvatarProps> = ({ user, size = 22, showName = false }) => {
+  const pixelSize = typeof size === 'number' ? size : sizeMap[size] || 22;
+
   if (!user) {
     return (
       <div
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
+          width: `${pixelSize}px`,
+          height: `${pixelSize}px`,
           borderRadius: '50%',
           backgroundColor: 'var(--bg-surface-active)',
           border: '1px dashed var(--border-default)',
@@ -43,7 +53,7 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 22, showName = fals
           src={user.avatar}
           alt={user.name}
           className="user-avatar"
-          style={{ width: `${size}px`, height: `${size}px` }}
+          style={{ width: `${pixelSize}px`, height: `${pixelSize}px` }}
           onError={(e) => {
             (e.target as HTMLElement).style.display = 'none';
           }}
@@ -51,8 +61,8 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 22, showName = fals
       ) : (
         <div
           style={{
-            width: `${size}px`,
-            height: `${size}px`,
+            width: `${pixelSize}px`,
+            height: `${pixelSize}px`,
             borderRadius: '50%',
             background: 'var(--accent-gradient)',
             display: 'flex',
@@ -60,7 +70,7 @@ export const Avatar: React.FC<AvatarProps> = ({ user, size = 22, showName = fals
             justifyContent: 'center',
             color: '#fff',
             fontWeight: 600,
-            fontSize: `${Math.max(9, size * 0.4)}px`,
+            fontSize: `${Math.max(9, pixelSize * 0.4)}px`,
           }}
         >
           {initials}
