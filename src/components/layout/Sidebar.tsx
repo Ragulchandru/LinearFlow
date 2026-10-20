@@ -5,7 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   Inbox,
   UserCheck,
-  LayoutDashboard,
   Package,
   Layers,
   MoreHorizontal,
@@ -49,6 +48,10 @@ export const Sidebar: React.FC = () => {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+  const wsInitials = workspace?.name
+    ? workspace.name.split(' ').map((n) => n[0]).join('').substring(0, 3).toUpperCase()
+    : 'TBW';
+
   return (
     <aside className={`app-sidebar ${sidebarOpen ? 'open' : ''}`} aria-label="Main sidebar">
       {/* Top Workspace & Quick Action Bar */}
@@ -61,9 +64,9 @@ export const Sidebar: React.FC = () => {
             aria-expanded={workspaceMenuOpen}
           >
             <div className="sidebar-ws-badge">
-              {workspace?.name ? workspace.name.substring(0, 3).toUpperCase() : 'LNF'}
+              {wsInitials}
             </div>
-            <span className="sidebar-ws-title">{workspace?.name || 'LinearFlow'}</span>
+            <span className="sidebar-ws-title">{workspace?.name || 'Test Blog Workspace'}</span>
             <ChevronDown size={12} color="var(--text-tertiary)" />
           </button>
 
@@ -148,13 +151,6 @@ export const Sidebar: React.FC = () => {
             <ChevronDown size={11} className="section-chevron" />
           </div>
           <div className="sidebar-nav-group">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}
-            >
-              <LayoutDashboard size={14} className="sidebar-item-icon" />
-              <span>Dashboard</span>
-            </NavLink>
             <NavLink
               to="/projects"
               className={({ isActive }) => `sidebar-item ${isActive ? 'active' : ''}`}

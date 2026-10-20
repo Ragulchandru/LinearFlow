@@ -9,7 +9,6 @@ import { MyIssuesPage } from './pages/MyIssuesPage';
 import { InboxPage } from './pages/InboxPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SignInPage } from './pages/auth/SignInPage';
 import { SignUpPage } from './pages/auth/SignUpPage';
@@ -37,15 +36,15 @@ const ProtectedShell: React.FC = () => {
     <div className="app-container">
       <Sidebar />
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/" element={<Navigate to="/issues" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/issues" replace />} />
         <Route path="/issues" element={<AllIssuesPage />} />
         <Route path="/my-issues" element={<MyIssuesPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/issues" replace />} />
       </Routes>
 
       {/* Global Overlays */}
@@ -68,7 +67,7 @@ const AppRoutes: React.FC = () => {
         path="/signin"
         element={
           isAuthenticated ? (
-            <Navigate to={isOnboarded ? '/dashboard' : '/onboarding'} replace />
+            <Navigate to={isOnboarded ? '/issues' : '/onboarding'} replace />
           ) : (
             <SignInPage />
           )
@@ -78,7 +77,7 @@ const AppRoutes: React.FC = () => {
         path="/signup"
         element={
           isAuthenticated ? (
-            <Navigate to={isOnboarded ? '/dashboard' : '/onboarding'} replace />
+            <Navigate to={isOnboarded ? '/issues' : '/onboarding'} replace />
           ) : (
             <SignUpPage />
           )
@@ -93,7 +92,7 @@ const AppRoutes: React.FC = () => {
           !isAuthenticated ? (
             <Navigate to="/signin" replace />
           ) : isOnboarded ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to="/issues" replace />
           ) : (
             <OnboardingPage />
           )
